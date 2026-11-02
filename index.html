@@ -312,6 +312,7 @@ let ac = null
 let master = null
 let muted = false
 let songTimer = null
+let songBus = null // 每一遍歌挂在自己的 bus 上，停歌时掐掉，已排好的音符也一起停
 const F = { F4: 349.23, G4: 392, A4: 440, B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, C6: 1046.5 }
 const SONG = [['G4', .75], ['G4', .25], ['A4', 1], ['G4', 1], ['C5', 1], ['B4', 2],
   ['G4', .75], ['G4', .25], ['A4', 1], ['G4', 1], ['D5', 1], ['C5', 2],
@@ -319,7 +320,7 @@ const SONG = [['G4', .75], ['G4', .25], ['A4', 1], ['G4', 1], ['C5', 1], ['B4', 
   ['F5', .75], ['F5', .25], ['E5', 1], ['C5', 1], ['D5', 1], ['C5', 3]]
 const BEAT = 0.42
 
-function note(freq, t, vol) {
+function note(freq, t, vol, dest) {
   ;[[1, 'sine', 1], [2, 'triangle', 0.18], [3, 'sine', 0.06]].forEach(([mul, type, v]) => {
     const o = ac.createOscillator()
     const g = ac.createGain()
@@ -328,7 +329,7 @@ function note(freq, t, vol) {
     g.gain.setValueAtTime(0.0001, t)
     g.gain.exponentialRampToValueAtTime(vol * v, t + 0.01)
     g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6)
-    o.connect(g).connect(master)
+    o.connect(g).connect(dest || master)
     o.start(t)
     o.stop(t + 1.7)
   })
@@ -336,13 +337,20 @@ function note(freq, t, vol) {
 
 function playSong() {
   stopSong()
+  songBus = ac.createGain()
+  songBus.connect(master)
   let t = ac.currentTime + 0.1
-  SONG.forEach(([n, b]) => { note(F[n], t, 0.22); t += b * BEAT })
+  SONG.forEach(([n, b]) => { note(F[n], t, 0.22, songBus); t += b * BEAT })
   songTimer = setTimeout(playSong, (t - ac.currentTime + 1.2) * 1000)
 }
 
 function stopSong() {
   clearTimeout(songTimer)
+  if (songBus) {
+    songBus.gain.value = 0
+    songBus.disconnect()
+    songBus = null
+  }
 }
 
 function tada() {
@@ -433,7 +441,7 @@ function startRound() {
 
 wishBtn.onclick = async () => {
   wishBtn.style.display = 'none'
-  if (master && !muted) master.gain.value = 0.35 // 吹的时候把音乐调小
+  if (songBus) songBus.gain.value = 0.35 // 吹的时候把音乐调小
   status.textContent = '对着手机下方，用力吹一口气～'
   tapBlow.style.display = ''
   if (await listenBlow()) meter.style.display = ''
@@ -447,7 +455,6 @@ tapBlow.onclick = () => {
 function allOut() {
   stopListening()
   stopSong()
-  if (master) master.gain.value = muted ? 0 : 1
   tada()
   status.textContent = '愿望已经收到啦，一定会实现的！'
   tapBlow.style.display = 'none'
