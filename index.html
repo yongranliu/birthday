@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>生日快乐</title>
+<style>
+  :root {
+    --bg1: #FFD6E0; --bg2: #FFF2F5; --ink: #6B3A4A; --sub: #A97786; --accent: #FF7A9C;
+    --tier1: #F59FB5; --tier2: #F8C4D2; --cream: #FFF8F0; --plate: #FFFFFF; --card: rgba(255,255,255,0.86);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: linear-gradient(170deg, var(--bg1), var(--bg2));
+    color: var(--ink);
+    font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; transition: opacity .6s, transform .6s; }
+  .hidden { opacity: 0; pointer-events: none; transform: scale(.96); }
+
+  /* 背景光斑 / 星星 */
+  #fx { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .bokeh { position: absolute; border-radius: 50%; background: var(--accent); opacity: .12; animation: rise linear infinite; }
+  .night .bokeh { background: #FFFFFF; opacity: .06; }
+  @keyframes rise { from { transform: translateY(110vh); } to { transform: translateY(-20vh); } }
+  .star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; animation: twinkle 2.4s ease-in-out infinite; }
+  @keyframes twinkle { 0%,100% { opacity: .15; } 50% { opacity: 1; } }
+
+  /* 开场 */
+  #intro { justify-content: center; padding: 24px; text-align: center; }
+  .intro-small { font-size: 15px; color: var(--sub); letter-spacing: 4px; }
+  .intro-name { font-size: 40px; font-weight: 800; margin: 10px 0 32px; }
+  .gift { width: 150px; height: 150px; animation: wiggle 2.2s ease-in-out infinite; transform-origin: 50% 90%; }
+  @keyframes wiggle { 0%,70%,100% { transform: rotate(0); } 75% { transform: rotate(-6deg); } 80% { transform: rotate(6deg); } 85% { transform: rotate(-4deg); } 90% { transform: rotate(3deg); } }
+  .btn {
+    border: 0; border-radius: 999px; padding: 15px 34px; font-size: 17px; font-weight: 700;
+    background: var(--ink); color: var(--bg2); box-shadow: 0 8px 20px rgba(0,0,0,.12);
+    font-family: inherit; cursor: pointer;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn.light { background: var(--card); color: var(--ink); box-shadow: none; }
+  #intro .btn { margin-top: 36px; }
+  .intro-tip { margin-top: 14px; font-size: 12px; color: var(--sub); }
+
+  /* 主画面 */
+  #main { padding: calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 24px); }
+  .hi { font-size: 30px; font-weight: 800; letter-spacing: 2px; text-align: center; }
+  .hi small { display: block; font-size: 15px; font-weight: 500; color: var(--sub); letter-spacing: 6px; margin-top: 6px; }
+  .script {
+    font-family: "Snell Roundhand", "Brush Script MT", "Segoe Script", "Dancing Script", cursive;
+    font-size: 40px; color: var(--accent); margin-top: 4px; text-align: center;
+  }
+  .stage { position: relative; flex: 1; width: 100%; max-width: 420px; display: flex; align-items: center; justify-content: center; min-height: 0; }
+  #cake { width: 100%; max-height: 100%; animation: drop .9s cubic-bezier(.2,1.4,.4,1) both; }
+  @keyframes drop { from { transform: translateY(-40px) scale(.9); opacity: 0; } }
+  .flame { transform-box: fill-box; transform-origin: 50% 100%; animation: flicker .9s ease-in-out infinite alternate; transition: opacity .3s, transform .3s; }
+  .flame.out { opacity: 0; transform: scale(.2); animation: none; }
+  .glow { transition: opacity .3s; }
+  .glow.out { opacity: 0; }
+  @keyframes flicker { 0% { transform: scale(1, 1) rotate(-2deg); } 50% { transform: scale(.92, 1.08) rotate(2deg); } 100% { transform: scale(1.04, .96) rotate(-1deg); } }
+  .smoke { opacity: 0; transform-box: fill-box; transform-origin: 50% 100%; }
+  .smoke.go { animation: smoke 1.6s ease-out forwards; }
+  @keyframes smoke { 0% { opacity: .7; transform: translateY(0) scale(.6); } 100% { opacity: 0; transform: translateY(-40px) scale(1.6); } }
+
+  .status { min-height: 26px; font-size: 16px; font-weight: 600; text-align: center; margin: 4px 0 14px; }
+  .controls { display: flex; flex-direction: column; align-items: center; gap: 12px; min-height: 104px; }
+  .meter { width: 200px; height: 10px; border-radius: 5px; background: var(--card); overflow: hidden; display: none; }
+  .meter i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 5px; transition: width .08s; }
+  .link { background: none; border: 0; color: var(--sub); font-size: 14px; text-decoration: underline; font-family: inherit; padding: 6px; }
+
+  #mute { position: fixed; top: calc(env(safe-area-inset-top) + 14px); right: 14px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--card); font-size: 18px; z-index: 5; }
+
+  /* 信 */
+  #letter {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+    background: var(--plate); color: #4A3A3A; border-radius: 26px 26px 0 0;
+    padding: 28px 26px calc(env(safe-area-inset-bottom) + 22px);
+    box-shadow: 0 -10px 40px rgba(0,0,0,.15);
+    transform: translateY(105%); transition: transform .7s cubic-bezier(.2,.9,.3,1);
+    max-height: 78vh; overflow-y: auto;
+  }
+  #letter.show { transform: none; }
+  .letter-head { font-size: 13px; color: #B09A9A; letter-spacing: 4px; }
+  .letter-to { font-size: 20px; font-weight: 800; margin: 12px 0 10px; }
+  #msg { font-size: 16px; line-height: 1.9; white-space: pre-wrap; min-height: 90px; }
+  #msg::after { content: "▍"; color: var(--accent); animation: blink 1s steps(1) infinite; }
+  #msg.done::after { content: ""; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .sign { text-align: right; margin-top: 16px; font-weight: 700; }
+  .date { text-align: right; font-size: 13px; color: #B09A9A; margin-top: 4px; }
+  .letter-actions { display: flex; gap: 10px; margin-top: 22px; }
+  .letter-actions .btn { flex: 1; padding: 13px 0; font-size: 15px; }
+  .letter-actions .btn.light { background: #F4EFEF; }
+
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
+</style>
+</head>
+<body>
+<div id="fx"></div>
+
+<section id="intro" class="screen">
+  <div class="intro-small">有一份生日惊喜</div>
+  <div class="intro-name">给 <span class="nm"></span></div>
+  <svg class="gift" viewBox="0 0 120 120" aria-hidden="true">
+    <rect x="18" y="50" width="84" height="60" rx="8" fill="var(--accent)"/>
+    <rect x="12" y="36" width="96" height="20" rx="6" fill="var(--tier1)"/>
+    <rect x="54" y="36" width="12" height="74" fill="var(--cream)"/>
+    <path d="M60 36 C40 10 22 26 40 36 Z M60 36 C80 10 98 26 80 36 Z" fill="var(--cream)" stroke="var(--tier1)" stroke-width="3"/>
+  </svg>
+  <button class="btn" id="open">拆开看看</button>
+  <div class="intro-tip">建议打开声音 🔊</div>
+</section>
+
+<section id="main" class="screen hidden">
+  <div class="hi">Hi，<span class="nm"></span><small>生 日 快 乐</small></div>
+  <div class="script">Happy Birthday</div>
+  <div class="stage"><svg id="cake" viewBox="0 0 300 280"></svg></div>
+  <div class="status" id="status"></div>
+  <div class="controls">
+    <button class="btn" id="wish">许好愿了，吹蜡烛</button>
+    <div class="meter" id="meter"><i></i></div>
+    <button class="link" id="tapBlow" style="display:none">吹不动？点这里帮你吹</button>
+  </div>
+</section>
+
+<button id="mute" aria-label="静音">🔊</button>
+<canvas id="confetti"></canvas>
+
+<section id="letter">
+  <div class="letter-head">A LETTER FOR YOU</div>
+  <div class="letter-to">亲爱的 <span class="nm"></span>：</div>
+  <div id="msg"></div>
+  <div class="sign" id="sign"></div>
+  <div class="date" id="date"></div>
+  <div class="letter-actions">
+    <button class="btn light" id="again">再点一次蜡烛</button>
+    <button class="btn" id="close">收起信</button>
+  </div>
+</section>
+
+<script>
+// ---------- 数据：链接 #d= 后面是 base64 的 JSON，全部留在浏览器里不上传 ----------
+const THEMES = {
+  pink:  { bg1: '#FFD6E0', bg2: '#FFF2F5', ink: '#6B3A4A', sub: '#A97786', accent: '#FF7A9C', tier1: '#F59FB5', tier2: '#F8C4D2', cream: '#FFF8F0', plate: '#FFFFFF', card: 'rgba(255,255,255,0.86)' },
+  mint:  { bg1: '#CFF2E4', bg2: '#F1FBF6', ink: '#2F5547', sub: '#6F9A8A', accent: '#3FBF8F', tier1: '#8ED9BC', tier2: '#BDEBD7', cream: '#FFFDF7', plate: '#FFFFFF', card: 'rgba(255,255,255,0.86)' },
+  night: { bg1: '#1E2350', bg2: '#454A8C', ink: '#F5F1FF', sub: '#B9B6E0', accent: '#FFC857', tier1: '#8C7AE6', tier2: '#B7A9F2', cream: '#FFF6E5', plate: '#FFFDF8', card: 'rgba(255,255,255,0.16)' },
+  lemon: { bg1: '#FFEFB0', bg2: '#FFFBEA', ink: '#6A5420', sub: '#A88F55', accent: '#F2A93B', tier1: '#F9D56E', tier2: '#FBE7A1', cream: '#FFFDF5', plate: '#FFFFFF', card: 'rgba(255,255,255,0.86)' }
+}
+
+function decodeData() {
+  const m = location.hash.match(/d=([\w-]+)/)
+  if (m) {
+    try {
+      const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/')
+      const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+      return JSON.parse(new TextDecoder().decode(bytes))
+    } catch (e) {}
+  }
+  const q = new URLSearchParams(location.search)
+  return { n: q.get('n'), a: q.get('a'), m: q.get('m'), f: q.get('f'), t: q.get('t'), d: q.get('d') }
+}
+
+const raw = decodeData()
+const D = {
+  name: (raw.n || '你').slice(0, 12),
+  age: parseInt(raw.a, 10) > 0 ? Math.min(99, parseInt(raw.a, 10)) : 0,
+  msg: raw.m || '又长大一岁啦。\n愿你新的一岁，喜欢的都在身边，想要的都在路上，\n不慌不忙，闪闪发光。\n生日快乐！',
+  from: raw.f || '',
+  theme: THEMES[raw.t] ? raw.t : 'pink',
+  date: raw.d || ''
+}
+const T = THEMES[D.theme]
+Object.keys(T).forEach(k => document.documentElement.style.setProperty('--' + k, T[k]))
+document.querySelectorAll('.nm').forEach(el => { el.textContent = D.name })
+document.title = D.name + '，生日快乐 🎂'
+document.getElementById('sign').textContent = D.from ? '—— ' + D.from : ''
+document.getElementById('date').textContent = D.date
+
+// ---------- 背景 ----------
+const fx = document.getElementById('fx')
+if (D.theme === 'night') {
+  document.body.classList.add('night')
+  for (let i = 0; i < 40; i++) {
+    const s = document.createElement('i')
+    s.className = 'star'
+    s.style.left = Math.random() * 100 + '%'
+    s.style.top = Math.random() * 100 + '%'
+    s.style.animationDelay = Math.random() * 2.4 + 's'
+    fx.appendChild(s)
+  }
+}
+for (let i = 0; i < 12; i++) {
+  const b = document.createElement('i')
+  b.className = 'bokeh'
+  const size = 20 + Math.random() * 70
+  b.style.width = b.style.height = size + 'px'
+  b.style.left = Math.random() * 100 + '%'
+  b.style.animationDuration = 12 + Math.random() * 14 + 's'
+  b.style.animationDelay = -Math.random() * 20 + 's'
+  fx.appendChild(b)
+}
+
+// ---------- 蛋糕 ----------
+const NS = 'http://www.w3.org/2000/svg'
+const cake = document.getElementById('cake')
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag)
+  for (const k in attrs) e.setAttribute(k, attrs[k])
+  ;(parent || cake).appendChild(e)
+  return e
+}
+
+function drips(x1, x2, y, seed) {
+  let d = 'M' + x1 + ' ' + (y - 6) + ' L' + x2 + ' ' + (y - 6) + ' L' + x2 + ' ' + y
+  const n = Math.round((x2 - x1) / 18)
+  const w = (x2 - x1) / n
+  for (let i = n - 1; i >= 0; i--) {
+    const cx = x1 + i * w + w / 2
+    const len = 6 + ((i * 7 + seed) % 5) * 5
+    d += ' L' + (cx + w / 2) + ' ' + y + ' Q' + (cx + w / 2) + ' ' + (y + len) + ' ' + cx + ' ' + (y + len) + ' Q' + (cx - w / 2) + ' ' + (y + len) + ' ' + (cx - w / 2) + ' ' + y
+  }
+  return d + ' Z'
+}
+
+const flames = []
+function buildCake() {
+  cake.innerHTML = ''
+  flames.length = 0
+  el('ellipse', { cx: 150, cy: 252, rx: 132, ry: 18, fill: 'rgba(0,0,0,0.08)' })
+  el('ellipse', { cx: 150, cy: 246, rx: 128, ry: 16, fill: T.plate })
+  // 下层
+  el('rect', { x: 40, y: 160, width: 220, height: 84, rx: 12, fill: T.tier1 })
+  el('path', { d: drips(40, 260, 166, 3), fill: T.cream })
+  el('rect', { x: 40, y: 228, width: 220, height: 10, fill: T.cream, opacity: 0.7 })
+  // 上层
+  el('rect', { x: 78, y: 104, width: 144, height: 62, rx: 10, fill: T.tier2 })
+  el('path', { d: drips(78, 222, 110, 1), fill: T.cream })
+  // 糖粒和装饰
+  const sprinkles = ['#FF8FA3', '#7FC8F8', '#FFD166', '#9BE3B4', '#C3A6FF']
+  for (let i = 0; i < 26; i++) {
+    const x = 50 + ((i * 37) % 200)
+    const y = 190 + ((i * 53) % 40)
+    el('rect', { x, y, width: 8, height: 3, rx: 1.5, fill: sprinkles[i % 5], transform: 'rotate(' + ((i * 47) % 180) + ' ' + x + ' ' + y + ')' })
+  }
+  for (let i = 0; i < 5; i++) {
+    const x = 96 + i * 27
+    el('circle', { cx: x, cy: 140, r: 6, fill: T.cream })
+    el('circle', { cx: x, cy: 138, r: 3, fill: T.accent })
+  }
+
+  // 蜡烛：有年龄就用数字蜡烛，否则三根普通蜡烛
+  const wicks = []
+  if (D.age) {
+    const digits = String(D.age).split('')
+    digits.forEach((dg, i) => {
+      const x = 150 + (i - (digits.length - 1) / 2) * 46
+      const t = el('text', { x, y: 104, 'text-anchor': 'middle', 'font-size': 74, 'font-weight': 900, fill: T.accent, stroke: T.cream, 'stroke-width': 4, 'paint-order': 'stroke', 'font-family': 'Arial Black, Helvetica, sans-serif' })
+      t.textContent = dg
+      wicks.push([x, 46])
+    })
+  } else {
+    ;[110, 150, 190].forEach((x, i) => {
+      const y = i === 1 ? 50 : 60
+      el('rect', { x: x - 6, y, width: 12, height: 108 - y, rx: 3, fill: T.cream })
+      for (let s = y + 8; s < 104; s += 14) el('rect', { x: x - 6, y: s, width: 12, height: 5, fill: T.accent, opacity: 0.8 })
+      wicks.push([x, y])
+    })
+  }
+  wicks.forEach(([x, y]) => {
+    el('line', { x1: x, y1: y, x2: x, y2: y - 7, stroke: '#4A3A3A', 'stroke-width': 2, 'stroke-linecap': 'round' })
+    const glow = el('circle', { cx: x, cy: y - 18, r: 20, fill: '#FFD27A', opacity: 0.35, class: 'glow' })
+    const g = el('g', { class: 'flame out' })
+    el('path', { d: 'M' + x + ' ' + (y - 32) + ' C' + (x + 11) + ' ' + (y - 18) + ' ' + (x + 9) + ' ' + (y - 6) + ' ' + x + ' ' + (y - 6) + ' C' + (x - 9) + ' ' + (y - 6) + ' ' + (x - 11) + ' ' + (y - 18) + ' ' + x + ' ' + (y - 32) + ' Z', fill: '#FFB23E' }, g)
+    el('path', { d: 'M' + x + ' ' + (y - 22) + ' C' + (x + 5) + ' ' + (y - 14) + ' ' + (x + 4) + ' ' + (y - 8) + ' ' + x + ' ' + (y - 8) + ' C' + (x - 4) + ' ' + (y - 8) + ' ' + (x - 5) + ' ' + (y - 14) + ' ' + x + ' ' + (y - 22) + ' Z', fill: '#FFF3C4' }, g)
+    const smoke = el('circle', { cx: x, cy: y - 14, r: 7, fill: '#C9C2C2', class: 'smoke' })
+    glow.classList.add('out')
+    flames.push({ g, glow, smoke, lit: false })
+  })
+}
+
+function lightCandles() {
+  flames.forEach((f, i) => setTimeout(() => {
+    f.g.classList.remove('out')
+    f.glow.classList.remove('out')
+    f.smoke.classList.remove('go')
+    f.lit = true
+  }, 500 + i * 380))
+}
+
+function blowOne() {
+  const f = flames.find(x => x.lit)
+  if (!f) return false
+  f.lit = false
+  f.g.classList.add('out')
+  f.glow.classList.add('out')
+  f.smoke.classList.remove('go')
+  void f.smoke.getBBox()
+  f.smoke.classList.add('go')
+  if (!flames.some(x => x.lit)) {
+    allOut()
+    return false
+  }
+  return true
+}
+
+// ---------- 音乐：用 WebAudio 合成八音盒版《生日快乐》，不需要音频文件 ----------
+let ac = null
+let master = null
+let muted = false
+let songTimer = null
+const F = { F4: 349.23, G4: 392, A4: 440, B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, C6: 1046.5 }
+const SONG = [['G4', .75], ['G4', .25], ['A4', 1], ['G4', 1], ['C5', 1], ['B4', 2],
+  ['G4', .75], ['G4', .25], ['A4', 1], ['G4', 1], ['D5', 1], ['C5', 2],
+  ['G4', .75], ['G4', .25], ['G5', 1], ['E5', 1], ['C5', 1], ['B4', 1], ['A4', 2],
+  ['F5', .75], ['F5', .25], ['E5', 1], ['C5', 1], ['D5', 1], ['C5', 3]]
+const BEAT = 0.42
+
+function note(freq, t, vol) {
+  ;[[1, 'sine', 1], [2, 'triangle', 0.18], [3, 'sine', 0.06]].forEach(([mul, type, v]) => {
+    const o = ac.createOscillator()
+    const g = ac.createGain()
+    o.type = type
+    o.frequency.value = freq * mul
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(vol * v, t + 0.01)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6)
+    o.connect(g).connect(master)
+    o.start(t)
+    o.stop(t + 1.7)
+  })
+}
+
+function playSong() {
+  stopSong()
+  let t = ac.currentTime + 0.1
+  SONG.forEach(([n, b]) => { note(F[n], t, 0.22); t += b * BEAT })
+  songTimer = setTimeout(playSong, (t - ac.currentTime + 1.2) * 1000)
+}
+
+function stopSong() {
+  clearTimeout(songTimer)
+}
+
+function tada() {
+  const t = ac.currentTime + 0.05
+  ;['C5', 'E5', 'G5', 'C6'].forEach((n, i) => note(F[n], t + i * 0.09, 0.25))
+}
+
+document.getElementById('mute').onclick = () => {
+  muted = !muted
+  document.getElementById('mute').textContent = muted ? '🔇' : '🔊'
+  if (master) master.gain.value = muted ? 0 : 1
+}
+
+// ---------- 吹气检测：麦克风低频能量持续偏高就算在吹 ----------
+let mic = null
+let listening = false
+async function listenBlow() {
+  try {
+    mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
+  } catch (e) {
+    return false
+  }
+  const src = ac.createMediaStreamSource(mic)
+  const an = ac.createAnalyser()
+  an.fftSize = 1024
+  src.connect(an)
+  const buf = new Uint8Array(an.frequencyBinCount)
+  const hz = ac.sampleRate / an.fftSize
+  const lo = Math.max(1, Math.round(60 / hz))
+  const hi = Math.round(320 / hz) // 吹气的能量集中在低频，八音盒音乐在 390Hz 以上，不容易误触发
+  const bar = document.querySelector('#meter i')
+  let strong = 0
+  let last = performance.now()
+  listening = true
+  ;(function loop(now) {
+    if (!listening) return
+    const dt = (now - last) / 1000
+    last = now
+    an.getByteFrequencyData(buf)
+    let sum = 0
+    for (let i = lo; i <= hi; i++) sum += buf[i]
+    const level = sum / (hi - lo + 1)
+    bar.style.width = Math.min(100, level / 2) + '%'
+    if (level > 165) {
+      strong += dt
+      if (strong > 0.18) {
+        strong = 0.05
+        if (!blowOne()) return
+      }
+    } else {
+      strong = Math.max(0, strong - dt)
+    }
+    requestAnimationFrame(loop)
+  })(last)
+  return true
+}
+
+function stopListening() {
+  listening = false
+  if (mic) mic.getTracks().forEach(t => t.stop())
+  mic = null
+}
+
+// ---------- 流程 ----------
+const status = document.getElementById('status')
+const wishBtn = document.getElementById('wish')
+const tapBlow = document.getElementById('tapBlow')
+const meter = document.getElementById('meter')
+
+document.getElementById('open').onclick = () => {
+  ac = new (window.AudioContext || window.webkitAudioContext)()
+  master = ac.createGain()
+  master.connect(ac.destination)
+  document.getElementById('intro').classList.add('hidden')
+  document.getElementById('main').classList.remove('hidden')
+  startRound()
+}
+
+function startRound() {
+  buildCake()
+  lightCandles()
+  playSong()
+  status.textContent = '闭上眼睛，许个愿吧 ✨'
+  wishBtn.style.display = ''
+  tapBlow.style.display = 'none'
+  meter.style.display = 'none'
+}
+
+wishBtn.onclick = async () => {
+  wishBtn.style.display = 'none'
+  if (master && !muted) master.gain.value = 0.35 // 吹的时候把音乐调小
+  status.textContent = '对着手机下方，用力吹一口气～'
+  tapBlow.style.display = ''
+  if (await listenBlow()) meter.style.display = ''
+  else status.textContent = '点下面的按钮，帮你吹灭蜡烛～'
+}
+
+tapBlow.onclick = () => {
+  const timer = setInterval(() => { if (!blowOne()) clearInterval(timer) }, 140)
+}
+
+function allOut() {
+  stopListening()
+  stopSong()
+  if (master) master.gain.value = muted ? 0 : 1
+  tada()
+  status.textContent = '愿望已经收到啦，一定会实现的！'
+  tapBlow.style.display = 'none'
+  meter.style.display = 'none'
+  confetti()
+  setTimeout(openLetter, 1600)
+}
+
+let typing = null
+function openLetter() {
+  const box = document.getElementById('msg')
+  document.getElementById('letter').classList.add('show')
+  box.textContent = ''
+  box.classList.remove('done')
+  const chars = Array.from(D.msg)
+  let i = 0
+  clearInterval(typing)
+  typing = setInterval(() => {
+    box.textContent += chars[i++]
+    if (i >= chars.length) {
+      clearInterval(typing)
+      box.classList.add('done')
+    }
+  }, 90)
+}
+
+document.getElementById('close').onclick = () => document.getElementById('letter').classList.remove('show')
+document.getElementById('again').onclick = () => {
+  document.getElementById('letter').classList.remove('show')
+  startRound()
+}
+
+// ---------- 彩带 ----------
+const cv = document.getElementById('confetti')
+const cx = cv.getContext('2d')
+let parts = []
+function confetti() {
+  const dpr = window.devicePixelRatio || 1
+  cv.width = innerWidth * dpr
+  cv.height = innerHeight * dpr
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  const colors = [T.accent, T.tier1, '#FFD166', '#7FC8F8', '#9BE3B4', '#FFFFFF']
+  for (let i = 0; i < 160; i++) {
+    parts.push({
+      x: innerWidth / 2, y: innerHeight * 0.45,
+      vx: (Math.random() - 0.5) * 14, vy: -Math.random() * 14 - 4,
+      r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.4,
+      w: 6 + Math.random() * 6, h: 3 + Math.random() * 4,
+      c: colors[i % colors.length], life: 1
+    })
+  }
+  if (parts.length === 160) requestAnimationFrame(tick)
+}
+function tick() {
+  cx.clearRect(0, 0, innerWidth, innerHeight)
+  parts.forEach(p => {
+    p.vy += 0.35
+    p.vx *= 0.99
+    p.x += p.vx
+    p.y += p.vy
+    p.r += p.vr
+    p.life -= 0.006
+    cx.save()
+    cx.globalAlpha = Math.max(0, p.life)
+    cx.translate(p.x, p.y)
+    cx.rotate(p.r)
+    cx.fillStyle = p.c
+    cx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h)
+    cx.restore()
+  })
+  parts = parts.filter(p => p.life > 0 && p.y < innerHeight + 40)
+  if (parts.length) requestAnimationFrame(tick)
+  else cx.clearRect(0, 0, innerWidth, innerHeight)
+}
+</script>
+</body>
+</html>
